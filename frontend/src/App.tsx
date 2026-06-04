@@ -175,5 +175,4 @@ export default function App() {
     </ActionLogContext.Provider>
   )
 }
-  )
-}
+
