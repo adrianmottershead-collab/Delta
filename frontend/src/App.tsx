@@ -5,8 +5,9 @@ import { AccountDetail } from './components/AccountDetail'
 import { TopPriorities } from './components/TopPriorities'
 import { ActionLogContext } from './context/ActionLogContext'
 import { useActionLog } from './hooks/useActionLog'
+import { LearningLoopView } from './components/learningLoop/LearningLoopView'
 
-type View = 'portfolio' | 'priorities' | 'account'
+type View = 'portfolio' | 'priorities' | 'account' | 'learning-loop'
 
 export default function App() {
   const [view, setView] = useState<View>('portfolio')
@@ -73,6 +74,15 @@ export default function App() {
               {criticalOpen}
             </span>
           )}
+        </button>
+
+        <button
+          onClick={() => navigate('learning-loop')}
+          className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+            view === 'learning-loop' ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-600/30' : 'text-slate-400 hover:text-white hover:bg-[#141720]'
+          }`}
+        >
+          🔁 Learning Loop
         </button>
 
         <p className="text-xs text-slate-600 uppercase tracking-widest px-3 mt-3 mb-1">Accounts</p>
@@ -156,6 +166,10 @@ export default function App() {
 
             {view === 'priorities' && (
               <TopPriorities accounts={ACCOUNTS} onSelectAccount={selectAccount} />
+            )}
+
+            {view === 'learning-loop' && (
+              <LearningLoopView accounts={ACCOUNTS} />
             )}
 
             {view === 'account' && (
