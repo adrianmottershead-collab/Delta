@@ -5,6 +5,7 @@ import { StakeholderRadar, UsageTrend, DeploymentBars, ScoreGauges } from './Acc
 import { SiloGraph } from './SiloGraph'
 import { SimulationFeed } from './SimulationFeed'
 import { PivotPointBanner, PriorityActionsList, FullPlaybook } from './DeltaSynthesis'
+import { GenerateEbrButton } from './GenerateEbrButton'
 
 const TABS = ['Overview', 'Playbooks', 'Stakeholders', 'Deployments', 'Silo Map', 'Delta Monitor'] as const
 type Tab = typeof TABS[number]
@@ -122,6 +123,9 @@ export function AccountDetail({ account }: { account: Account }) {
       {/* ── Playbooks ── */}
       {tab === 'Playbooks' && (
         <div className="space-y-4">
+          <div className="flex justify-end">
+            <GenerateEbrButton account={account} />
+          </div>
           <PriorityActionsList synthesis={account.synthesis} accountId={account.id} />
           <FullPlaybook synthesis={account.synthesis} />
         </div>
