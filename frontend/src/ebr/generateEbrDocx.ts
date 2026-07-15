@@ -20,6 +20,7 @@ import {
   WidthType,
 } from 'docx'
 import type { Account, PriorityAction } from '../data/accounts'
+import { compareToPortfolio, estimateImpact, impactLabel, topLeverPerMetric } from './metricImpact'
 
 function fmtMoney(n: number) {
   return n >= 1_000_000 ? `$${(n / 1_000_000).toFixed(1)}M` : `$${(n / 1_000).toFixed(0)}K`
@@ -73,8 +74,8 @@ function snapshotTable(account: Account) {
   })
 }
 
-function priorityActionsTable(actions: PriorityAction[]) {
-  const widths = [900, 3600, 1200, 1400, 2350]
+function priorityActionsTable(actions: PriorityAction[], account: Account) {
+  const widths = [900, 3050, 1200, 1300, 1300, 1700]
   return new Table({
     width: { size: 9450, type: WidthType.DXA },
     columnWidths: widths,
@@ -85,7 +86,8 @@ function priorityActionsTable(actions: PriorityAction[]) {
           headerCell('Action', widths[1]),
           headerCell('Urgency', widths[2]),
           headerCell('Deadline', widths[3]),
-          headerCell('Rationale', widths[4]),
+          headerCell('Moves', widths[4]),
+          headerCell('Rationale', widths[5]),
         ],
       }),
       ...actions.map(
@@ -96,8 +98,39 @@ function priorityActionsTable(actions: PriorityAction[]) {
               bodyCell(a.action, widths[1]),
               bodyCell(a.urgency, widths[2]),
               bodyCell(a.deadline, widths[3]),
-              bodyCell(a.rationale, widths[4]),
+              bodyCell(impactLabel(estimateImpact(a, account)), widths[4]),
+              bodyCell(a.rationale, widths[5]),
             ],
+          }),
+      ),
+    ],
+  })
+}
+
+function leversTable(account: Account) {
+  const levers = topLeverPerMetric(account)
+  const rows: [string, string, string, string][] = [
+    ['Churn Risk', `${account.churnRisk}/100`, compareToPortfolio('churnRisk', account).label, levers.churnRisk?.action.action ?? 'No upcoming action currently targets this metric.'],
+    ['Expansion Score', `${account.expansionScore}/100`, compareToPortfolio('expansionScore', account).label, levers.expansionScore?.action.action ?? 'No upcoming action currently targets this metric.'],
+    ['NPS', `${account.npsScore > 0 ? '+' : ''}${account.npsScore}`, compareToPortfolio('npsScore', account).label, levers.npsScore?.action.action ?? 'No upcoming action currently targets this metric.'],
+  ]
+  const widths = [1500, 1000, 2450, 4500]
+  return new Table({
+    width: { size: 9450, type: WidthType.DXA },
+    columnWidths: widths,
+    rows: [
+      new TableRow({
+        children: [
+          headerCell('Metric', widths[0]),
+          headerCell('Current', widths[1]),
+          headerCell('Vs. portfolio', widths[2]),
+          headerCell('Highest-leverage next action', widths[3]),
+        ],
+      }),
+      ...rows.map(
+        ([metric, value, vsPortfolio, action]) =>
+          new TableRow({
+            children: [bodyCell(metric, widths[0]), bodyCell(value, widths[1]), bodyCell(vsPortfolio, widths[2]), bodyCell(action, widths[3])],
           }),
       ),
     ],
@@ -142,6 +175,9 @@ export async function generateEbrDocx(account: Account): Promise<Blob> {
           new Paragraph({ text: 'Account Snapshot', heading: HeadingLevel.HEADING_1, spacing: { after: 120 } }),
           snapshotTable(account),
 
+          new Paragraph({ text: 'What Moves These Numbers', heading: HeadingLevel.HEADING_1, spacing: { before: 300, after: 120 } }),
+          leversTable(account),
+
           new Paragraph({ text: 'The Pivot Point', heading: HeadingLevel.HEADING_1, spacing: { before: 300, after: 120 } }),
           new Paragraph({
             children: [new TextRun({ text: s.pivotPoint, size: 22 })],
@@ -156,7 +192,7 @@ export async function generateEbrDocx(account: Account): Promise<Blob> {
           new Paragraph({ children: [new TextRun({ text: s.deploymentSiloAnalysis })], spacing: { after: 200 } }),
 
           new Paragraph({ text: 'Priority Actions', heading: HeadingLevel.HEADING_1, spacing: { before: 200, after: 120 } }),
-          priorityActionsTable(s.priorityActions),
+          priorityActionsTable(s.priorityActions, account),
 
           new Paragraph({ text: 'Multi-Threaded Playbook', heading: HeadingLevel.HEADING_1, spacing: { before: 300, after: 80 } }),
           ...playbookSection('CCO', s.playbook.cco),
@@ -182,3 +218,4 @@ export function downloadEbrDocx(account: Account) {
     URL.revokeObjectURL(url)
   })
 }
+
