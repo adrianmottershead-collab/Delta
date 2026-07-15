@@ -1,3 +1,4 @@
+
 // Ties every priority action to the metric it's actually meant to move.
 // The point: nothing in this app should just be an activity — each action
 // should be legible as "this is the lever, this is the metric it pulls."
@@ -7,6 +8,7 @@
 // authoring, current or future.
 
 import type { Account, PriorityAction, Urgency } from '../data/accounts'
+import { ACCOUNTS } from '../data/accounts'
 
 export type Metric = 'churnRisk' | 'expansionScore' | 'npsScore'
 
@@ -67,4 +69,41 @@ export function topLeverPerMetric(account: Account): Record<Metric, { action: Pr
     }
   }
   return result
+}
+
+// "Better" means different directions for different metrics — lower is
+// better for churn risk, higher is better for expansion/NPS. This is what
+// lets a raw number ("72/100") mean something: is that good or bad
+// relative to the rest of the book of business?
+const BETTER_WHEN_LOWER: Record<Metric, boolean> = {
+  churnRisk: true,
+  expansionScore: false,
+  npsScore: false,
+}
+
+export function portfolioAverage(metric: Metric): number {
+  const values = ACCOUNTS.map(a => a[metric])
+  return values.reduce((sum, v) => sum + v, 0) / values.length
+}
+
+export interface BenchmarkComparison {
+  value: number
+  average: number
+  delta: number          // value - average, signed
+  isBetterThanAverage: boolean
+  label: string           // "18 pts better than portfolio avg (54)"
+}
+
+export function compareToPortfolio(metric: Metric, account: Account): BenchmarkComparison {
+  const value = account[metric]
+  const average = portfolioAverage(metric)
+  const delta = value - average
+  const betterWhenLower = BETTER_WHEN_LOWER[metric]
+  const isBetterThanAverage = betterWhenLower ? delta < 0 : delta > 0
+  const magnitude = Math.round(Math.abs(delta))
+  const direction = isBetterThanAverage ? 'better' : 'worse'
+  const label = magnitude === 0
+    ? `in line with portfolio avg (${Math.round(average)})`
+    : `${magnitude} pts ${direction} than portfolio avg (${Math.round(average)})`
+  return { value, average, delta, isBetterThanAverage, label }
 }
